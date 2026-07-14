@@ -112,29 +112,6 @@
             font-size: 1.2em;
         }
 
-        .music-warning {
-            position: fixed;
-            left: 50%;
-            bottom: 20px;
-            transform: translateX(-50%);
-            max-width: min(90vw, 420px);
-            padding: 12px 16px;
-            border-radius: 14px;
-            background: rgba(18, 18, 24, 0.88);
-            color: #fff;
-            font-size: 0.95rem;
-            line-height: 1.4;
-            box-shadow: 0 10px 24px rgba(0,0,0,0.28);
-            z-index: 50;
-            display: none;
-        }
-
-        .music-warning a {
-            color: #ffde59;
-            text-decoration: none;
-            font-weight: 700;
-        }
-
         .music-hint {
             margin-top: 14px;
             font-size: 0.95rem;
@@ -169,9 +146,6 @@
 </head>
 <body>
 
-    <div id="music-warning" class="music-warning"></div>
-    <audio id="birthday-audio" preload="auto"></audio>
-
     <div id="setup-zone">
         <h1>HAY QUÁ NHỈ, LẠI GIÀ THÊM 1 TUỔI RỒI!</h1>
         <p class="subtitle">Bấm vào hộp quà bên dưới để nhận tối hậu thư từ AE Cốt Cán đê!!</p>
@@ -194,11 +168,7 @@
 
     <script>
         let musicStarted = false;
-        const birthdayAudioSrc = 'music/phan-dinh-tung-chuc-mung-sinh-nhat.mp3';
-
-        function getBirthdayAudio() {
-            return document.getElementById('birthday-audio');
-        }
+        let audioContext = null;
 
         function openGift() {
             // Ẩn hộp quà và tiêu đề cũ
@@ -219,25 +189,57 @@
                 return;
             }
 
-            const audio = getBirthdayAudio();
-            if (!audio) {
+            const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+            if (!AudioContextClass) {
                 return;
             }
 
-            audio.src = birthdayAudioSrc;
-            audio.loop = true;
+            audioContext = audioContext || new AudioContextClass();
 
-            audio.play().then(() => {
-                musicStarted = true;
-            }).catch(() => {
-                const warning = document.getElementById('music-warning');
-                if (!warning) {
-                    return;
-                }
+            if (audioContext.state === 'suspended') {
+                audioContext.resume();
+            }
 
-                warning.innerHTML = 'Không phát được nhạc local. Hãy kiểm tra file <b>music/phan-dinh-tung-chuc-mung-sinh-nhat.mp3</b> trong repo.';
-                warning.style.display = 'block';
+            const melody = [
+                ['C4', 0.35], ['C4', 0.35], ['D4', 0.7], ['C4', 0.7], ['F4', 0.7], ['E4', 1.0],
+                ['C4', 0.35], ['C4', 0.35], ['D4', 0.7], ['C4', 0.7], ['G4', 0.7], ['F4', 1.0],
+                ['C4', 0.35], ['C4', 0.35], ['C5', 0.7], ['A4', 0.7], ['F4', 0.7], ['E4', 0.7], ['D4', 1.0],
+                ['Bb4', 0.35], ['Bb4', 0.35], ['A4', 0.7], ['F4', 0.7], ['G4', 0.7], ['F4', 1.2]
+            ];
+
+            const noteFrequencies = {
+                C4: 261.63,
+                D4: 293.66,
+                E4: 329.63,
+                F4: 349.23,
+                G4: 392.00,
+                A4: 440.00,
+                Bb4: 466.16,
+                C5: 523.25
+            };
+
+            const startTime = audioContext.currentTime + 0.05;
+            let cursor = startTime;
+
+            melody.forEach(([note, beats]) => {
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+
+                oscillator.type = 'triangle';
+                oscillator.frequency.setValueAtTime(noteFrequencies[note], cursor);
+
+                gainNode.gain.setValueAtTime(0.0001, cursor);
+                gainNode.gain.exponentialRampToValueAtTime(0.12, cursor + 0.03);
+                gainNode.gain.exponentialRampToValueAtTime(0.0001, cursor + beats * 0.9);
+
+                oscillator.connect(gainNode).connect(audioContext.destination);
+                oscillator.start(cursor);
+                oscillator.stop(cursor + beats);
+
+                cursor += beats;
             });
+
+            musicStarted = true;
         }
 
         function createDropItem() {
@@ -245,11 +247,11 @@
             drop.classList.add('drop');
             
             const images = [
-                'file:///C:/Users/Dell/Pictures/1.jpg',
-                'file:///C:/Users/Dell/Pictures/2.jpg',
-                'file:///C:/Users/Dell/Pictures/3.jpg',
-                'file:///C:/Users/Dell/Pictures/4.jpg',
-                'file:///C:/Users/Dell/Pictures/5.jpg'
+                'anh/1.jpg',
+                'anh/2.jpg',
+                'anh/3.jpg',
+                'anh/4.jpg',
+                'anh/5.jpg'
             ];
 
             const randomImg = images[Math.floor(Math.random() * images.length)];
